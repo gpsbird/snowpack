@@ -9,8 +9,8 @@ import fs from 'fs';
 import got, {CancelableRequest, Response} from 'got';
 import open from 'open';
 import path from 'path';
-import {SnowpackConfig, BuildScript} from './config';
 import mkdirp from 'mkdirp';
+import {SnowpackConfig} from './config';
 
 export const PIKA_CDN = `https://cdn.pika.dev`;
 export const GLOBAL_CACHE_DIR = globalCacheDir('snowpack');
@@ -225,28 +225,6 @@ export async function clearCache() {
   ]);
 }
 
-/**
- * Given an import string and a list of scripts, return the mount script that matches the import.
- *
- * `mount ./src --to /_dist_` and `mount src --to /_dist_` match `src/components/Button`
- * `mount src --to /_dist_` does not match `package/components/Button`
- */
-export function findMatchingMountScript(scripts: BuildScript[], spec: string) {
-  // Only match bare module specifiers. relative and absolute imports should not match
-  if (
-    spec.startsWith('./') ||
-    spec.startsWith('../') ||
-    spec.startsWith('/') ||
-    spec.startsWith('http://') ||
-    spec.startsWith('https://')
-  ) {
-    return null;
-  }
-  return scripts
-    .filter((script) => script.type === 'mount')
-    .find(({args}) => spec.startsWith(args.fromDisk));
-}
-
 /** Get full extensions of files */
 export function getExt(fileName: string) {
   return {
@@ -255,4 +233,15 @@ export function getExt(fileName: string) {
     /** full extension, if applicable (e.g. `.proxy.js`) */
     expandedExt: path.basename(fileName).replace(/[^.]+/, '').toLocaleLowerCase(),
   };
+}
+
+/** Replace file extensions */
+export function replaceExt(
+  fileName: string,
+  newExtension: string,
+  replaceExpandedExt: boolean = false,
+): string {
+  const {baseExt, expandedExt} = getExt(fileName);
+  const extToReplace = new RegExp(`${replaceExpandedExt ? expandedExt : baseExt}`, 'i');
+  return fileName.replace(extToReplace, newExtension);
 }

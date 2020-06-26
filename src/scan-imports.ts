@@ -7,7 +7,8 @@ import nodePath from 'path';
 import stripComments from 'strip-comments';
 import validatePackageName from 'validate-npm-package-name';
 import {SnowpackConfig, SnowpackSourceFile} from './config';
-import {isTruthy, findMatchingMountScript, HTML_JS_REGEX, getExt} from './util';
+import {loadPlugins} from './plugins';
+import {isTruthy, HTML_JS_REGEX, getExt} from './util';
 
 const WEB_MODULES_TOKEN = 'web_modules/';
 const WEB_MODULES_TOKEN_LENGTH = WEB_MODULES_TOKEN.length;
@@ -283,14 +284,17 @@ export async function scanImports(cwd: string, config: SnowpackConfig): Promise<
 
 export async function scanImportsFromFiles(
   loadedFiles: SnowpackSourceFile[],
-  {scripts}: SnowpackConfig,
+  config: SnowpackConfig,
 ): Promise<InstallTarget[]> {
+  const {mountedDirs} = loadPlugins(config);
   return (
     loadedFiles
       .map(parseCodeForInstallTargets)
       .reduce((flat, item) => flat.concat(item), [])
       // Ignore source imports that match a mount directory.
-      .filter((target) => !findMatchingMountScript(scripts, target.specifier))
+      .filter(
+        (target) => mountedDirs.findIndex(({fromDisk}) => fromDisk === target.specifier) === -1,
+      )
       .sort((impA, impB) => impA.specifier.localeCompare(impB.specifier))
   );
 }
